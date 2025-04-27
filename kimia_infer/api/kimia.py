@@ -48,6 +48,7 @@ class KimiAudio(object):
         self.kimia_text_audiodelaytokens = 6
         self.eod_ids = [self.extra_tokens.msg_end, self.extra_tokens.media_end]
 
+    @torch.inference_mode()
     def _generate_loop(
         self,
         audio_input_ids: torch.Tensor,  # input audio tokens
@@ -205,6 +206,7 @@ class KimiAudio(object):
         )
         return return_audio_tokens, return_text_tokens
 
+    @torch.inference_mode()
     def generate(
         self,
         chats: list[dict],
