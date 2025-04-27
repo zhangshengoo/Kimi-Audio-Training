@@ -4,7 +4,6 @@ import os
 import librosa
 import torch
 from loguru import logger
-from huggingface_hub import cached_assets_path
 from transformers import AutoTokenizer
 
 
@@ -13,25 +12,16 @@ from kimia_infer.models.tokenizer.glm4_tokenizer import Glm4Tokenizer
 from kimia_infer.utils.data import KimiAContent
 from kimia_infer.utils.special_tokens import instantiate_extra_tokens
 
-
 class KimiAPromptManager:
     def __init__(self, model_path: str, kimia_token_offset: int):
         self.audio_tokenizer = Glm4Tokenizer("THUDM/glm-4-voice-tokenizer")
         self.audio_tokenizer = self.audio_tokenizer.to(torch.cuda.current_device())
 
-        if os.path.exists(model_path):
-            # local path
-            cache_path = model_path
-        else:
-            # model_id
-            cache_path = cached_assets_path(
-                library_name="transformers", namespace=model_path
-            )
-        logger.info(f"Looking for resources in {cache_path}")
+        logger.info(f"Looking for resources in {model_path}")
         logger.info(f"Loading whisper model")
 
         self.whisper_model = WhisperEncoder(
-            os.path.join(cache_path, "whisper-large-v3"), mel_batch_size=20
+            os.path.join(model_path, "whisper-large-v3"), mel_batch_size=20
         )
         self.whisper_model = self.whisper_model.to(torch.cuda.current_device())
         self.whisper_model = self.whisper_model.bfloat16()
