@@ -4,7 +4,6 @@ import os
 import librosa
 import torch
 from loguru import logger
-from huggingface_hub import cached_assets_path
 from transformers import AutoTokenizer
 
 
