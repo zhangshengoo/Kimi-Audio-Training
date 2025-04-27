@@ -3,13 +3,14 @@
 <p>
 
 <p align="center">
-Kimi-Audio-7B-Instruct <a href="https://huggingface.co/moonshotai/Kimi-Audio-7B-Instruct">🤗</a>&nbsp; | 📑 <a href="assets/kimia_report.pdf">Paper</a> &nbsp;&nbsp;
+Kimi-Audio-7B <a href="https://huggingface.co/moonshotai/Kimi-Audio-7B">🤗</a>&nbsp; | Kimi-Audio-7B-Instruct <a href="https://huggingface.co/moonshotai/Kimi-Audio-7B-Instruct">🤗</a>&nbsp; | 📑 <a href="assets/kimia_report.pdf">Paper</a> &nbsp;&nbsp;
 </p>
 
 
 We present Kimi-Audio, an open-source audio foundation model excelling in **audio understanding, generation, and conversation**. This repository contains the official implementation, models, and evaluation toolkit for Kimi-Audio.
 
 ## 🔥🔥🔥 News!!
+* April 27, 2025: 👋 We release pretrained model weights of [Kimi-Audio-7B](https://huggingface.co/moonshotai/Kimi-Audio-7B).
 * April 25, 2025: 👋 We release the inference code and model weights of [Kimi-Audio-7B-Instruct](https://huggingface.co/moonshotai/Kimi-Audio-7B-Instruct).
 * April 25, 2025: 👋 We release the audio evaluation toolkit [Kimi-Audio-Evalkit](https://github.com/MoonshotAI/Kimi-Audio-Evalkit). We can easily reproduce the **our results and baselines** by this toolkit!
 * April 25, 2025: 👋 We release the technical report of [Kimi-Audio](assets/kimia_report.pdf).
@@ -39,7 +40,7 @@ Kimi-Audio is designed as a universal audio foundation model capable of handling
 *   **Large-Scale Pre-training:** Pre-trained on over 13 million hours of diverse audio data (speech, music, sounds) and text data, enabling robust audio reasoning and language understanding.
 *   **Novel Architecture:** Employs a hybrid audio input (continuous acoustic + discrete semantic tokens) and an LLM core with parallel heads for text and audio token generation.
 *   **Efficient Inference:** Features a chunk-wise streaming detokenizer based on flow matching for low-latency audio generation.
-*   **Open-Source:** We release the code, model checkpoints, and a comprehensive evaluation toolkit to foster community research and development.
+*   **Open-Source:** We release the code, model checkpoints for both pretrain and instruction finetuning, and a comprehensive evaluation toolkit to foster community research and development.
 
 ## Architecture Overview
 
