@@ -9,13 +9,23 @@ from transformers import AutoModelForCausalLM
 from kimia_infer.models.detokenizer import get_audio_detokenizer
 from .prompt_manager import KimiAPromptManager
 from kimia_infer.utils.sampler import KimiASampler
-
+from huggingface_hub import snapshot_download
 
 class KimiAudio(object):
     def __init__(self, model_path: str, load_detokenizer: bool = True):
         logger.info(f"Loading kimi-audio main model")
+
+        if os.path.exists(model_path):
+            # local path
+            cache_path = model_path
+        else:
+            # cache everything if model_path is a model-id
+            cache_path = snapshot_download(model_path)
+    
+        logger.info(f"Looking for resources in {cache_path}")
+        logger.info(f"Loading whisper model")
         self.alm = AutoModelForCausalLM.from_pretrained(
-            model_path, torch_dtype=torch.bfloat16, trust_remote_code=True
+            cache_path, torch_dtype=torch.bfloat16, trust_remote_code=True
         )
         self.alm = self.alm.to(torch.cuda.current_device())
 
@@ -23,17 +33,8 @@ class KimiAudio(object):
         self.kimia_token_offset = model_config.kimia_token_offset
 
         self.prompt_manager = KimiAPromptManager(
-            model_path=model_path, kimia_token_offset=self.kimia_token_offset
+            model_path=cache_path, kimia_token_offset=self.kimia_token_offset
         )
-
-        if os.path.exists(model_path):
-            # local path
-            cache_path = model_path
-        else:
-            # model_id
-            cache_path = cached_assets_path(
-                library_name="transformers", namespace=model_path
-            )
 
         if load_detokenizer:
             logger.info(f"Loading detokenizer")
