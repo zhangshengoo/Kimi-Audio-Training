@@ -3,7 +3,7 @@
 <p>
 
 <p align="center">
-Kimi-Audio-7B <a href="https://huggingface.co/moonshotai/Kimi-Audio-7B">🤗</a>&nbsp; | Kimi-Audio-7B-Instruct <a href="https://huggingface.co/moonshotai/Kimi-Audio-7B-Instruct">🤗</a>&nbsp; | 📑 <a href="assets/kimia_report.pdf">Paper</a> &nbsp;&nbsp;
+Kimi-Audio-7B <a href="https://huggingface.co/moonshotai/Kimi-Audio-7B">🤗</a>&nbsp; | Kimi-Audio-7B-Instruct <a href="https://huggingface.co/moonshotai/Kimi-Audio-7B-Instruct">🤗</a>&nbsp; | 📑 <a href="https://arxiv.org/pdf/2504.18425">Paper</a> &nbsp;&nbsp;
 </p>
 
 
@@ -13,7 +13,7 @@ We present Kimi-Audio, an open-source audio foundation model excelling in **audi
 * April 27, 2025: 👋 We release pretrained model weights of [Kimi-Audio-7B](https://huggingface.co/moonshotai/Kimi-Audio-7B).
 * April 25, 2025: 👋 We release the inference code and model weights of [Kimi-Audio-7B-Instruct](https://huggingface.co/moonshotai/Kimi-Audio-7B-Instruct).
 * April 25, 2025: 👋 We release the audio evaluation toolkit [Kimi-Audio-Evalkit](https://github.com/MoonshotAI/Kimi-Audio-Evalkit). We can easily reproduce the **our results and baselines** by this toolkit!
-* April 25, 2025: 👋 We release the technical report of [Kimi-Audio](assets/kimia_report.pdf).
+* April 25, 2025: 👋 We release the technical report of [Kimi-Audio](https://arxiv.org/pdf/2504.18425).
 
 ## Table of Contents
 
@@ -36,7 +36,7 @@ We present Kimi-Audio, an open-source audio foundation model excelling in **audi
 Kimi-Audio is designed as a universal audio foundation model capable of handling a wide variety of audio processing tasks within a single unified framework. Key features include:
 
 *   **Universal Capabilities:** Handles diverse tasks like speech recognition (ASR), audio question answering (AQA), audio captioning (AAC), speech emotion recognition (SER), sound event/scene classification (SEC/ASC), and end-to-end speech conversation.
-*   **State-of-the-Art Performance:** Achieves SOTA results on numerous audio benchmarks (see [Evaluation](#evaluation) and the [Technical Report](assets/kimia_report.pdf)).
+*   **State-of-the-Art Performance:** Achieves SOTA results on numerous audio benchmarks (see [Evaluation](#evaluation) and the [Technical Report](https://arxiv.org/pdf/2504.18425)).
 *   **Large-Scale Pre-training:** Pre-trained on over 13 million hours of diverse audio data (speech, music, sounds) and text data, enabling robust audio reasoning and language understanding.
 *   **Novel Architecture:** Employs a hybrid audio input (continuous acoustic + discrete semantic tokens) and an LLM core with parallel heads for text and audio token generation.
 *   **Efficient Inference:** Features a chunk-wise streaming detokenizer based on flow matching for low-latency audio generation.
@@ -629,13 +629,14 @@ Thank you to all the open-source projects for their contributions to this projec
 If you find Kimi-Audio useful in your research or applications, please cite our technical report:
 
 ```bibtex
-@misc{kimi_audio_2024,
-      title={Kimi-Audio Technical Report},
-      author={Kimi Team},
-      year={2024},
-      eprint={arXiv:placeholder},
+@misc{kimiteam2025kimiaudiotechnicalreport,
+      title={Kimi-Audio Technical Report}, 
+      author={KimiTeam and Ding Ding and Zeqian Ju and Yichong Leng and Songxiang Liu and Tong Liu and Zeyu Shang and Kai Shen and Wei Song and Xu Tan and Heyi Tang and Zhengtao Wang and Chu Wei and Yifei Xin and Xinran Xu and Jianwei Yu and Yutao Zhang and Xinyu Zhou and Y. Charles and Jun Chen and Yanru Chen and Yulun Du and Weiran He and Zhenxing Hu and Guokun Lai and Qingcheng Li and Yangyang Liu and Weidong Sun and Jianzhou Wang and Yuzhi Wang and Yuefeng Wu and Yuxin Wu and Dongchao Yang and Hao Yang and Ying Yang and Zhilin Yang and Aoxiong Yin and Ruibin Yuan and Yutong Zhang and Zaida Zhou},
+      year={2025},
+      eprint={2504.18425},
       archivePrefix={arXiv},
-      primaryClass={cs.CL}
+      primaryClass={eess.AS},
+      url={https://arxiv.org/abs/2504.18425}, 
 }
 ```
 
