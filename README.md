@@ -26,6 +26,7 @@ We present Kimi-Audio, an open-source audio foundation model excelling in **audi
   - [Audio-to-Text Chat](#audio-to-text-chat)
   - [Speech Conversation](#speech-conversation)
 - [Evaluation Toolkit](#evaluation-toolkit)
+- [Generation Testset](#generation-testset)
 - [License](#license)
 - [Acknowledgements](#acknowledgements)
 - [Citation](#citation)
@@ -602,7 +603,9 @@ Key features:
 
 We encourage the community to use and contribute to this toolkit to foster more reliable and comparable benchmarking. Find it here: [Kimi-Audio-Evalkit](https://github.com/MoonshotAI/Kimi-Audio-Evalkit).
 
+## Generation Testset
 
+We collect and release [Kimi-Audio-Generation-Testset](https://huggingface.co/datasets/moonshotai/Kimi-Audio-GenTest), which is designed to benchmark and evaluate the conversational capabilities of audio-based dialogue models. It consists of a collection of audio files containing various instructions and conversational prompts. The primary goal is to assess a model's ability to generate not just relevant, but also appropriately styled audio responses. The language in dataset is Chinese.
 
 ## License
 
