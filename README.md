@@ -57,7 +57,16 @@ Kimi-Audio consists of three main components:
 2.  **Audio LLM:** A transformer-based model (initialized from a pre-trained text LLM like Qwen 2.5 7B) with shared layers processing multimodal inputs, followed by parallel heads for autoregressively generating text tokens and discrete audio semantic tokens.
 3.  **Audio Detokenizer:** Converts the predicted discrete semantic audio tokens back into high-fidelity waveforms using a flow-matching model and a vocoder (BigVGAN), supporting chunk-wise streaming with a look-ahead mechanism for low latency.
 
+## Getting Started
 
+### Step1: Get the Code
+
+```bash
+git clone https://github.com/MoonshotAI/Kimi-Audio.git
+cd Kimi-Audio
+git submodule update --init --recursive
+pip install -r requirements.txt
+```
 
 ## Quick Start
 
