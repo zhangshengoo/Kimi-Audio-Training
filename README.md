@@ -36,12 +36,12 @@ We present Kimi-Audio, an open-source audio foundation model excelling in **audi
 
 Kimi-Audio is designed as a universal audio foundation model capable of handling a wide variety of audio processing tasks within a single unified framework. Key features include:
 
-*   **Universal Capabilities:** Handles diverse tasks like speech recognition (ASR), audio question answering (AQA), audio captioning (AAC), speech emotion recognition (SER), sound event/scene classification (SEC/ASC), and end-to-end speech conversation.
-*   **State-of-the-Art Performance:** Achieves SOTA results on numerous audio benchmarks (see [Evaluation](#evaluation) and the [Technical Report](https://arxiv.org/pdf/2504.18425)).
-*   **Large-Scale Pre-training:** Pre-trained on over 13 million hours of diverse audio data (speech, music, sounds) and text data, enabling robust audio reasoning and language understanding.
-*   **Novel Architecture:** Employs a hybrid audio input (continuous acoustic + discrete semantic tokens) and an LLM core with parallel heads for text and audio token generation.
-*   **Efficient Inference:** Features a chunk-wise streaming detokenizer based on flow matching for low-latency audio generation.
-*   **Open-Source:** We release the code, model checkpoints for both pretrain and instruction finetuning, and a comprehensive evaluation toolkit to foster community research and development.
+*   **Universal Capabilities:** Handle diverse tasks like automatic speech recognition (ASR), audio question answering (AQA), automatic audio captioning (AAC), speech emotion recognition (SER), sound event/scene classification (SEC/ASC), and end-to-end speech conversation.
+*   **State-of-the-Art Performance:** Achieve SOTA results on numerous audio benchmarks (see [Evaluation](#evaluation) and the [Technical Report](https://arxiv.org/pdf/2504.18425)).
+*   **Large-Scale Pre-training:** Pre-train on over 13 million hours of diverse audio data (speech, music, sounds) and text data, enabling robust audio reasoning and language understanding.
+*   **Novel Architecture:** Employ a hybrid audio input (continuous acoustic vectors + discrete semantic tokens) and an LLM core with parallel heads for text and audio token generation.
+*   **Efficient Inference:** Feature a chunk-wise streaming detokenizer based on flow matching for low-latency audio generation.
+*   **Open-Source:** Release the code and model checkpoints for both pre-training and instruction fine-tuning, and release a comprehensive evaluation toolkit to foster community research and development.
 
 ## Architecture Overview
 
