@@ -4,11 +4,11 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name        = "kimi-audio"        # 🔑 pip install kimi-audio
-version     = "0.1.0"             # Increment when you publish new changes
+name        = "kimi-audio"
+version     = "0.1.0"        
 description = "Inference library for the Kimi‑Audio foundation model"
 readme      = "README.md"
-license     = {text = "MIT"}      # Repo code is MIT, parts from Qwen are Apache‑2.0:contentReference[oaicite:3]{index=3}
+license     = {text = "MIT"}
 authors     = [
   {name = "MoonshotAI", email = "contact@moonshot.ai"}
 ]
@@ -47,9 +47,8 @@ dependencies = [
   "gdown",
   "datasets",
   "torchdyn==1.0.6",
-  "huggingface_hub",
+  "huggingface_hub
   "loguru",
-  "decord",
   "blobfile",
   "timm",
   "sacrebleu==1.5.1",
@@ -57,15 +56,13 @@ dependencies = [
   "tqdm"
 ]
 
+[tool.setuptools]
+include-package-data = true
+
 [tool.setuptools.packages.find]
-# Tell setuptools where the import‑able code lives
 where = ["."]
 include = ["kimia_infer*",]
 
 [project.urls]
 Repository = "https://github.com/MoonshotAI/Kimi-Audio"
 
-[project.scripts]
-# Optional: create a command‑line entry point if you add a main() later
-# kimi-audio = "kimia_infer.cli:main"
-# -----------------------------------
