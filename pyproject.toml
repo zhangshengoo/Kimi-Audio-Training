@@ -5,15 +5,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name        = "kimi-audio"
-version     = "0.1.0"        
+version     = "0.1.0"
 description = "Inference library for the Kimi‑Audio foundation model"
 readme      = "README.md"
 license     = {text = "MIT"}
-authors     = [
-  {name = "MoonshotAI", email = "contact@moonshot.ai"}
-]
+authors     = [{name = "MoonshotAI", email = "contact@moonshot.ai"}]
 
-# Direct dependencies – copied from requirements.txt
 dependencies = [
   "torch==2.4.1",
   "torchaudio==2.4.1",
@@ -47,7 +44,7 @@ dependencies = [
   "gdown",
   "datasets",
   "torchdyn==1.0.6",
-  "huggingface_hub
+  "huggingface_hub",
   "loguru",
   "blobfile",
   "timm",
@@ -61,8 +58,7 @@ include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["kimia_infer*",]
+include = ["kimia_infer*"]
 
 [project.urls]
 Repository = "https://github.com/MoonshotAI/Kimi-Audio"
-
