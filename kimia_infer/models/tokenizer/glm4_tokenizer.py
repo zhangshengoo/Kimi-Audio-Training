@@ -4,7 +4,7 @@ import os
 
 from transformers import WhisperFeatureExtractor
 from .glm4.speech_tokenizer.modeling_whisper import WhisperVQEncoder
-from .glm4.speech_tokenizer.utils import extract_speech_token
+from .glm4_utils import extract_speech_token
 from torch import nn
 
 

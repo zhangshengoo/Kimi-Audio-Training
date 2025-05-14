@@ -174,11 +174,8 @@ class WhisperEncoder(nn.Module):
         if not self.unfreeze_online_whisper_model:
             self.speech_encoder.eval()
         self.mel_batch_size = mel_batch_size
-        # self.speech_encoder.to(torch.cuda.current_device())
-        # self.speech_encoder.half()
 
-    @torch.no_grad()
-    def tokenize_waveform(self, audio, kimia_whisper_clip_silence=False):
+    def forward(self, audio, kimia_whisper_clip_silence=False):
         if isinstance(audio, torch.Tensor):
             audio = audio[0]
             audio = audio.cpu().numpy()
@@ -218,8 +215,13 @@ class WhisperEncoder(nn.Module):
                     return_dict=True,
                 ).last_hidden_state
                 # audio_embedding: [1, 3000, 1280]
-                audio_embedding = audio_embedding[:, : token_len * 4, :].cpu()
+                audio_embedding = audio_embedding[:, : token_len * 4, :]
             final_audio_embedding.append(audio_embedding)
 
         final_audio_embedding = torch.cat(final_audio_embedding, dim=1)
         return final_audio_embedding
+
+    @torch.no_grad()
+    def tokenize_waveform(self, audio, kimia_whisper_clip_silence=False):
+        audio_embedding = self.forward(audio, kimia_whisper_clip_silence)
+        return audio_embedding.cpu()

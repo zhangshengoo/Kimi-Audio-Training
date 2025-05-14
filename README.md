@@ -25,6 +25,7 @@ We present Kimi-Audio, an open-source audio foundation model excelling in **audi
   - [Audio Understanding](#audio-understanding)
   - [Audio-to-Text Chat](#audio-to-text-chat)
   - [Speech Conversation](#speech-conversation)
+- [Finetune](#finetune)
 - [Evaluation Toolkit](#evaluation-toolkit)
 - [Generation Testset](#generation-testset)
 - [License](#license)
@@ -598,7 +599,9 @@ Here are performances on different benchmarks, you can easily reproduce the **ou
   </tbody>
 </table>
 
+## Finetune
 
+We release the pre-trained model and the lightweight finetune codes. Please refer to the [finetune_codes/README.md](finetune_codes/README.md) for more details.
 
 ## Evaluation Toolkit
 
@@ -630,6 +633,7 @@ We would like to thank the following projects and individuals for their contribu
 * [Transformers](https://github.com/huggingface/transformers)
 * [BigVGAN](https://github.com/NVIDIA/BigVGAN)
 * [GLM-4-Voice](https://github.com/THUDM/GLM-4-Voice)
+* [Qwen](https://github.com/QwenLM/Qwen/tree/main)
 
 Thank you to all the open-source projects for their contributions to this project!
 

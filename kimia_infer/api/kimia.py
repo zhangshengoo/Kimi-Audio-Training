@@ -229,7 +229,7 @@ class KimiAudio(object):
 
         history = self.prompt_manager.get_prompt(chats, output_type=output_type)
 
-        audio_input_ids, text_input_ids, is_continuous_mask = history.to_tensor()
+        audio_input_ids, text_input_ids, is_continuous_mask, _, _ = history.to_tensor()
         audio_features = history.continuous_feature
 
         generated_wav_tokens = []

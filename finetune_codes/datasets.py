@@ -1,78 +1,62 @@
-from typing import List, Dict
-import os
-
-import librosa
+from torch.utils.data import Dataset
+from functools import lru_cache
 import torch
-from loguru import logger
-from transformers import AutoTokenizer
-
-
-from kimia_infer.models.tokenizer.whisper_Lv3.whisper import WhisperEncoder
-from kimia_infer.models.tokenizer.glm4_tokenizer import Glm4Tokenizer
-from kimia_infer.utils.data import KimiAContent
+from typing import Dict, List
 from kimia_infer.utils.special_tokens import instantiate_extra_tokens
+from kimia_infer.utils.data import KimiAContent
+import librosa
 
-class KimiAPromptManager:
-    def __init__(self, model_path: str, kimia_token_offset: int):
-        self.audio_tokenizer = Glm4Tokenizer("THUDM/glm-4-voice-tokenizer")
-        self.audio_tokenizer = self.audio_tokenizer.to(torch.cuda.current_device())
+class LazySupervisedDataset(Dataset):
+    """Dataset for supervised fine-tuning."""
 
-        logger.info(f"Looking for resources in {model_path}")
-        logger.info(f"Loading whisper model")
+    def __init__(self, raw_data_list, whisper_model, text_tokenizer, max_len: int, kimia_token_offset: int):
+        super(LazySupervisedDataset, self).__init__()
+        self.whisper_model = whisper_model
+        self.max_len = max_len
 
-        self.whisper_model = WhisperEncoder(
-            os.path.join(model_path, "whisper-large-v3"), mel_batch_size=20
-        )
-        self.whisper_model = self.whisper_model.to(torch.cuda.current_device())
-        self.whisper_model = self.whisper_model.bfloat16()
-        self.whisper_model.eval()
+        print("There are {} samples in the dataset".format(len(raw_data_list)))
+        self.whisper_model = whisper_model
 
-        logger.info(f"Loading text tokenizer")
-        if os.path.exists(model_path) and os.path.exists(os.path.join(model_path, "tokenizer.json")):
-            self.text_tokenizer = AutoTokenizer.from_pretrained(
-                model_path, trust_remote_code=True
-            )
-        else:
-            logger.info(f"Can not find text tokenizer in {model_path}, Loading default text tokenizer from moonshotai/Kimi-Audio-7B-Instruct")
-            self.text_tokenizer = AutoTokenizer.from_pretrained(
-                "moonshotai/Kimi-Audio-7B-Instruct", trust_remote_code=True
-            )
+        print(f"Loading text tokenizer")
+        self.text_tokenizer = text_tokenizer
 
         self.extra_tokens = instantiate_extra_tokens(self.text_tokenizer)
 
+        self.pad_token = self.extra_tokens.pad
         self.kimia_token_offset = kimia_token_offset
+        self.raw_data = raw_data_list
 
+        self.cached_data_dict = {}
+
+    def __len__(self):
+        return len(self.raw_data)
+    
+    def extract_whisper_feat(self, wav: str):
+        wav = librosa.load(wav, sr=16000)[0]
+        # if isinstance(wav, str):
+        #     wav = librosa.load(wav, sr=16000)[0]
+
+        #     wav_tensor = torch.tensor(wav).unsqueeze(0)[:, :]
+        # elif isinstance(wav, torch.Tensor):
+        #     wav_tensor = wav
+        # else:
+        #     raise ValueError(f"Invalid wav type: {type(wav)}")
+
+        # wav_tensor = wav_tensor.to(torch.cuda.current_device())
+        # continous_feature = self.whisper_model(wav_tensor)
+        # continous_feature = continous_feature.reshape(
+        #     continous_feature.shape[0],
+        #     int(continous_feature.shape[1] // 4),
+        #     continous_feature.shape[2] * 4,
+        # )
+        return wav
+    
     def _tokenize_text(self, text):
         if text is None:
             return None
         token_ids = self.text_tokenizer.encode(text, bos=False, eos=False)
         return token_ids
-
-    def _tokenize_audio(self, wav_path):
-        wav_tokens = self.audio_tokenizer.tokenize(audio_path=wav_path)
-        wav_tokens = wav_tokens + self.kimia_token_offset
-        wav_tokens_list = wav_tokens.squeeze(0).cpu().numpy().tolist()
-        return wav_tokens_list
-
-    def extract_whisper_feat(self, wav: torch.Tensor | str):
-        if isinstance(wav, str):
-            wav = librosa.load(wav, sr=16000)[0]
-
-            wav_tensor = torch.tensor(wav).unsqueeze(0)[:, :]
-        elif isinstance(wav, torch.Tensor):
-            wav_tensor = wav
-        else:
-            raise ValueError(f"Invalid wav type: {type(wav)}")
-        assert self.whisper_model is not None
-        wav_tensor = wav_tensor.to(torch.cuda.current_device())
-        continous_feature = self.whisper_model.tokenize_waveform(wav_tensor)
-        continous_feature = continous_feature.reshape(
-            continous_feature.shape[0],
-            int(continous_feature.shape[1] // 4),
-            continous_feature.shape[2] * 4,
-        )
-        return continous_feature
-
+    
     def tokenize_message(
         self,
         message,
@@ -114,11 +98,7 @@ class KimiAPromptManager:
                 kimia_content_msg.audio_append(self.extra_tokens.kimia_text_blank, audio_token_loss_mask=False)
 
         elif message["message_type"] == "audio":
-            if "audio_tokens" in message:
-                speech_tokens = message["audio_tokens"]
-            else:
-                audio_path = message["content"]
-                speech_tokens = self._tokenize_audio(audio_path)
+            speech_tokens = message["audio_tokens"]
 
             kimia_content_msg.audio_append(self.extra_tokens.media_begin)
             kimia_content_msg.audio_extend(speech_tokens, is_continuous=True, audio_token_loss_mask=has_loss)
@@ -137,7 +117,7 @@ class KimiAPromptManager:
                 kimia_content_msg.text_append(self.extra_tokens.kimia_text_blank)
 
             if extract_whisper_feature:
-                whisper_feature = self.extract_whisper_feat(audio_path)
+                whisper_feature = self.extract_whisper_feat(message["content"])
                 kimia_content_msg.continuous_feature.append(whisper_feature)
         elif message["message_type"] == None:
             pass
@@ -153,8 +133,8 @@ class KimiAPromptManager:
         ), f"kimia_content_msg is not valid: {kimia_content_msg}"
 
         return kimia_content_msg
-
-    def get_prompt(
+    
+    def tokenize_conversation(
         self, messages: List[Dict], output_type: str = "text", add_assistant_start_msg: bool = True
     ) -> KimiAContent:
         """
@@ -225,3 +205,45 @@ class KimiAPromptManager:
             ret_msg.merge(msg)
 
         return ret_msg
+
+    @lru_cache(maxsize=None)
+    def __getitem__(self, i) -> Dict[str, torch.Tensor]:
+
+        task_type = self.raw_data[i]["task_type"]
+        conversation = self.raw_data[i]["conversation"]
+
+        output_type = "text" if task_type == "understanding" else "both"
+
+        tokenized_conversation = self.tokenize_conversation(conversation, output_type=output_type, add_assistant_start_msg=False)
+
+        audio_input_ids, text_input_ids, is_continuous_mask, audio_token_loss_mask, text_token_loss_mask = tokenized_conversation.to_tensor()
+
+        audio_features = tokenized_conversation.continuous_feature
+
+        audio_labels = torch.cat((audio_input_ids[:, 1:], audio_input_ids.new_full((1, 1), self.pad_token)), dim=1)
+        text_labels = torch.cat((text_input_ids[:, 1:], text_input_ids.new_full((1, 1), self.pad_token)), dim=1)
+        audio_loss_mask = torch.cat((audio_token_loss_mask[:, 1:], audio_token_loss_mask.new_full((1, 1), False)), dim=1)
+        text_loss_mask = torch.cat((text_token_loss_mask[:, 1:], text_token_loss_mask.new_full((1, 1), False)), dim=1)
+
+        ret = dict(
+            input_ids=audio_input_ids,
+            text_input_ids=text_input_ids,
+            whisper_input_feature=audio_features,
+            is_continuous_mask=is_continuous_mask,
+            labels=(
+                audio_labels,
+                text_labels,
+                audio_loss_mask,
+                text_loss_mask,
+            ),
+        )
+
+        return ret
+    
+    @staticmethod
+    def collate_fn(batch):
+        assert len(batch) == 1, "micro batch size is 1 for demo"
+
+        return batch[0]
+        
+        
