@@ -12,45 +12,48 @@ license     = {text = "MIT"}
 authors     = [{name = "MoonshotAI", email = "contact@moonshot.ai"}]
 
 dependencies = [
-  "torch==2.4.1",
-  "torchaudio==2.4.1",
-  "packaging",
-  "jinja2",
-  "openai-whisper",
-  "jsonlines",
-  "pandas",
-  "validators",
-  "sty",
-  "transformers",
-  "librosa",
-  "accelerate",
-  "aiohttp",
-  "colorama",
-  "omegaconf==2.3.0",
-  "sox",
-  "six==1.16.0",
-  "hyperpyyaml",
-  "conformer==0.3.2",
-  "diffusers",
-  "pillow",
-  "sentencepiece",
-  "easydict",
-  "fire",
-  "ujson",
-  "cairosvg",
-  "immutabledict",
-  "rich",
-  "wget",
-  "gdown",
-  "datasets",
-  "torchdyn==1.0.6",
-  "huggingface_hub",
-  "loguru",
-  "blobfile",
-  "timm",
-  "sacrebleu==1.5.1",
-  "soundfile",
-  "tqdm"
+    # Core ML dependencies
+    "torch>=2.0.0",
+    "torchaudio>=2.0.0",
+    "flash-attn>=2.0.0",
+    "transformers",
+    "accelerate",
+    "diffusers",
+    "conformer==0.3.2",
+    "torchdyn==1.0.6",
+    "librosa",
+    "soundfile",
+    "sox",
+    "openai-whisper",
+    "pandas",
+    "jsonlines",
+    "datasets",
+    "huggingface_hub",
+    "decord",
+    "blobfile",
+    "packaging",
+    "jinja2",
+    "validators",
+    "sty",
+    "colorama",
+    "omegaconf==2.3.0",
+    "six>=1.16.0",
+    "hyperpyyaml",
+    "pillow",
+    "sentencepiece",
+    "easydict",
+    "fire",
+    "ujson",
+    "cairosvg",
+    "immutabledict",
+    "rich",
+    "wget",
+    "gdown",
+    "timm",
+    "sacrebleu==1.5.1",
+    "tqdm",
+    "loguru",
+    "flash-attn"
 ]
 
 [tool.setuptools]
@@ -59,6 +62,9 @@ include-package-data = true
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["kimia_infer*"]
+
+[tool.setuptools.package-data]
+"kimia_infer" = ["**/*"]
 
 [project.urls]
 Repository = "https://github.com/MoonshotAI/Kimi-Audio"
