@@ -12,8 +12,8 @@ license     = {text = "MIT"}
 authors     = [{name = "MoonshotAI", email = "contact@moonshot.ai"}]
 
 dependencies = [
-  "torch<=2.6.0",
-  "torchaudio<=2.6.0",
+  "torch",
+  "torchaudio",
   "flash-attn",
   "soundfile",
   "librosa",
