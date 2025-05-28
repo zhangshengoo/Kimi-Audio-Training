@@ -13,7 +13,7 @@ from kimia_infer.utils.data import KimiAContent
 from kimia_infer.utils.special_tokens import instantiate_extra_tokens
 
 class KimiAPromptManager:
-    def __init__(self, model_path: str, kimia_token_offset: int):
+    def __init__(self, model_path: str, kimia_token_offset: int, kimia_text_audiodelaytokens: int):
         self.audio_tokenizer = Glm4Tokenizer("THUDM/glm-4-voice-tokenizer")
         self.audio_tokenizer = self.audio_tokenizer.to(torch.cuda.current_device())
 
@@ -33,6 +33,8 @@ class KimiAPromptManager:
         )
 
         self.extra_tokens = instantiate_extra_tokens(self.text_tokenizer)
+
+        self.kimia_text_audiodelaytokens = kimia_text_audiodelaytokens
 
         self.kimia_token_offset = kimia_token_offset
 
@@ -124,6 +126,17 @@ class KimiAPromptManager:
             if extract_whisper_feature:
                 whisper_feature = self.extract_whisper_feat(audio_path)
                 kimia_content_msg.continuous_feature.append(whisper_feature)
+        elif message["message_type"] == "audio-text":
+            audio_path, text = message["content"]
+            speech_tokens = self._tokenize_audio(audio_path)
+            text_tokens = self._tokenize_text(text)
+
+            kimia_content_msg.audio_extend([self.extra_tokens.kimia_text_blank] * self.kimia_text_audiodelaytokens)
+            kimia_content_msg.audio_extend(speech_tokens, is_continuous=False)
+            kimia_content_msg.text_extend(text_tokens)
+            text_pad_tokens = (self.kimia_text_audiodelaytokens + len(speech_tokens) - len(text_tokens)) * [self.extra_tokens.kimia_text_blank]
+            kimia_content_msg.text_extend(text_pad_tokens)
+
         elif message["message_type"] == None:
             pass
         else:

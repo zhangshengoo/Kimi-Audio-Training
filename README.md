@@ -124,9 +124,31 @@ wav_output, text_output = model.generate(messages_conversation, **sampling_param
 output_audio_path = "output_audio.wav"
 sf.write(output_audio_path, wav_output.detach().cpu().view(-1).numpy(), 24000) # Assuming 24kHz output
 print(f">>> Conversational Output Audio saved to: {output_audio_path}")
-print(">>> Conversational Output Text: ", text_output) # Expected output: "A."
+print(">>> Conversational Output Text: ", text_output) # Expected output: "当然可以，这很简单。一二三四五六七八九十。"
+
+# --- 5. Example 3: Audio-to-Audio/Text Conversation with Multiturn ---
+
+messages = [
+    {"role": "user", "message_type": "audio", "content": "test_audios/multiturn/case2/multiturn_q1.wav"},
+    # This is the first turn output of Kimi-Audio
+    {"role": "assistant", "message_type": "audio-text", "content": ["test_audios/multiturn/case2/multiturn_a1.wav", "当然可以，这很简单。一二三四五六七八九十。"]},
+    {"role": "user", "message_type": "audio", "content": "test_audios/multiturn/case2/multiturn_q2.wav"}
+]
+wav, text = model.generate(messages, **sampling_params, output_type="both")
+
+
+# Generate both audio and text output
+wav_output, text_output = model.generate(messages_conversation, **sampling_params, output_type="both")
+
+# Save the generated audio
+output_audio_path = "output_audio.wav"
+sf.write(output_audio_path, wav_output.detach().cpu().view(-1).numpy(), 24000) # Assuming 24kHz output
+print(f">>> Conversational Output Audio saved to: {output_audio_path}")
+print(">>> Conversational Output Text: ", text_output) # Expected output: "没问题，继续数下去就是十一十二十三十四十五十六十七十八十九二十。"
 
 print("Kimi-Audio inference examples complete.")
+
+
 ```
 
 ## Evaluation
