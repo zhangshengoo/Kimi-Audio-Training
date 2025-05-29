@@ -77,5 +77,7 @@ You can infer with the finetuned model by running:
 CUDA_VISIBLE_DEVICES=0 python -m finetune_codes.check_sft_infer
 ```
 
+# Note
 
+In this example, we support the ASR task. For other task such as speech conversation or text-to-speech, you might need to change the `tokenize_message` function in `finetune_codes/datasets.py`.
 
