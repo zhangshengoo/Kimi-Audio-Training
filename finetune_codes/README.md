@@ -81,3 +81,4 @@ CUDA_VISIBLE_DEVICES=0 python -m finetune_codes.check_sft_infer
 
 In this example, we support the ASR task. For other task such as speech conversation or text-to-speech, you might need to change the `tokenize_message` function in `finetune_codes/datasets.py`.
 
+The hyper-parameters in `finetune_codes/finetune_ds.sh` should be tuned in new task because of the differences in task and dataset size.
