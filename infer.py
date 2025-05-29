@@ -1,12 +1,15 @@
 from kimia_infer.api.kimia import KimiAudio
 import os
 import soundfile as sf
-
+import argparse
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--model_path", type=str, default="moonshotai/Kimi-Audio-7B-Instruct")
+    args = parser.parse_args()
 
     model = KimiAudio(
-        model_path="moonshotai/Kimi-Audio-7B-Instruct",
+        model_path=args.model_path,
         load_detokenizer=True,
     )
 

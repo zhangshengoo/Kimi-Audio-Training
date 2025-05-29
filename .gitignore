@@ -166,7 +166,6 @@ conf
 .DS_Store
 .ruff_cache
 .log
-*.jsonl
 *.parquet
 *.progress
 # Vscode
@@ -177,3 +176,5 @@ conf
 *.pt
 *.pth
 test_audios/output
+output/
+output

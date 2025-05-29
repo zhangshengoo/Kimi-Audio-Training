@@ -10,6 +10,7 @@ Kimi-Audio-7B <a href="https://huggingface.co/moonshotai/Kimi-Audio-7B">🤗</a>
 We present Kimi-Audio, an open-source audio foundation model excelling in **audio understanding, generation, and conversation**. This repository contains the official implementation, models, and evaluation toolkit for Kimi-Audio.
 
 ## 🔥🔥🔥 News!!
+* May 29, 2025: 👋 We release a finetuning example of [Kimi-Audio-7B](https://github.com/MoonshotAI/Kimi-Audio/tree/master/finetune_codes).
 * April 27, 2025: 👋 We release pretrained model weights of [Kimi-Audio-7B](https://huggingface.co/moonshotai/Kimi-Audio-7B).
 * April 25, 2025: 👋 We release the inference code and model weights of [Kimi-Audio-7B-Instruct](https://huggingface.co/moonshotai/Kimi-Audio-7B-Instruct).
 * April 25, 2025: 👋 We release the audio evaluation toolkit [Kimi-Audio-Evalkit](https://github.com/MoonshotAI/Kimi-Audio-Evalkit). We can easily reproduce the **our results and baselines** by this toolkit!
@@ -25,6 +26,7 @@ We present Kimi-Audio, an open-source audio foundation model excelling in **audi
   - [Audio Understanding](#audio-understanding)
   - [Audio-to-Text Chat](#audio-to-text-chat)
   - [Speech Conversation](#speech-conversation)
+- [Finetune](#finetune)
 - [Evaluation Toolkit](#evaluation-toolkit)
 - [Generation Testset](#generation-testset)
 - [License](#license)
@@ -626,7 +628,9 @@ Here are performances on different benchmarks, you can easily reproduce the **ou
   </tbody>
 </table>
 
+## Finetune
 
+We release the pre-trained model and the lightweight finetune codes. Please refer to the [finetune_codes/README.md](finetune_codes/README.md) for more details.
 
 ## Evaluation Toolkit
 
@@ -658,6 +662,7 @@ We would like to thank the following projects and individuals for their contribu
 * [Transformers](https://github.com/huggingface/transformers)
 * [BigVGAN](https://github.com/NVIDIA/BigVGAN)
 * [GLM-4-Voice](https://github.com/THUDM/GLM-4-Voice)
+* [Qwen](https://github.com/QwenLM/Qwen/tree/main)
 
 Thank you to all the open-source projects for their contributions to this project!
 
