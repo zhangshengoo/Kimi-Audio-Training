@@ -26,13 +26,13 @@ def process_chunk(chunk: List[Dict], gpu_id: int, cache_path: str) -> List[Dict]
     if not torch.cuda.is_available():
         raise RuntimeError(f"CUDA is not available for GPU {gpu_id}")
     
-    # Force CUDA initialization
+    # Force CUDA initialization and set device
     torch.cuda.init()
-    torch.cuda.set_device(gpu_id)
+    torch.cuda.set_device(0)  # Since we set CUDA_VISIBLE_DEVICES, this will be the only visible device
     
     # Log GPU usage
     logger.info(f"Process {mp.current_process().name} using GPU {gpu_id}")
-    logger.info(f"Available GPU: {torch.cuda.get_device_name(gpu_id)}")
+    logger.info(f"Available GPU: {torch.cuda.get_device_name(0)}")  # Use 0 since it's the only visible device
     logger.info(f"Current CUDA device: {torch.cuda.current_device()}")
     
     # Load model config and prompt manager
@@ -59,10 +59,10 @@ def process_chunk(chunk: List[Dict], gpu_id: int, cache_path: str) -> List[Dict]
     
     return processed_data
 
-def process_chunk_wrapper(args):
-    """Wrapper function for process_chunk to handle multiprocessing."""
-    chunk, gpu_id, cache_path = args
-    return process_chunk(chunk, gpu_id, cache_path)
+def process_chunk_with_result(chunk: List[Dict], gpu_id: int, cache_path: str, result_queue: mp.Queue):
+    """Process a chunk of data and put the result in the queue."""
+    result = process_chunk(chunk, gpu_id, cache_path)
+    result_queue.put(result)
 
 def main():
     parser = argparse.ArgumentParser()
@@ -99,21 +99,31 @@ def main():
     chunks = [data[i:i + chunk_size] for i in range(0, len(data), chunk_size)]
     logger.info(f"Split data into {len(chunks)} chunks, each with approximately {chunk_size} items")
 
-    # Prepare arguments for multiprocessing
-    process_args = [(chunks[i], i, cache_path) for i in range(args.num_gpus)]
+    # Create a queue for results
+    result_queue = mp.Queue()
     
-    # Create a pool of processes
-    with mp.Pool(processes=args.num_gpus) as pool:
-        results = pool.map(process_chunk_wrapper, process_args)
+    # Create processes for each GPU
+    processes = []
+    for gpu_id in range(args.num_gpus):
+        p = mp.Process(
+            target=process_chunk_with_result,
+            args=(chunks[gpu_id], gpu_id, cache_path, result_queue)
+        )
+        processes.append(p)
+        p.start()
+    
+    # Wait for all processes to complete
+    for p in processes:
+        p.join()
 
-    # Flatten results
-    flattened_results = []
-    for result in results:
-        flattened_results.extend(result)
+    # Collect results from the queue
+    results = []
+    while not result_queue.empty():
+        results.extend(result_queue.get())
 
     # Write results to output JSONL file
     with open(args.output_file, "w") as f_out:
-        for item in flattened_results:
+        for item in results:
             f_out.write(json.dumps(item, ensure_ascii=False) + "\n")
 
 if __name__ == "__main__":
