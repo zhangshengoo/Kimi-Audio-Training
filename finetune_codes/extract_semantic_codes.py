@@ -4,6 +4,12 @@ import json
 import multiprocessing as mp
 from functools import partial
 from typing import List, Dict, Any
+import torch
+import logging
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Set multiprocessing start method to 'spawn'
 mp.set_start_method('spawn', force=True)
@@ -18,6 +24,11 @@ def process_chunk(chunk: List[Dict], gpu_id: int, cache_path: str) -> List[Dict]
     """Process a chunk of data on a specific GPU."""
     # Set GPU device for this process
     os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
+    torch.cuda.set_device(gpu_id)
+    
+    # Log GPU usage
+    logger.info(f"Process {mp.current_process().name} using GPU {gpu_id}")
+    logger.info(f"Available GPU: {torch.cuda.get_device_name(gpu_id)}")
     
     # Load model config and prompt manager
     model_config = AutoConfig.from_pretrained(cache_path, trust_remote_code=True)
@@ -46,6 +57,12 @@ def main():
     parser.add_argument("--num_gpus", type=int, default=8, help="Number of GPUs to use")
     args = parser.parse_args()
 
+    # Check available GPUs
+    num_available_gpus = torch.cuda.device_count()
+    if num_available_gpus < args.num_gpus:
+        logger.warning(f"Requested {args.num_gpus} GPUs but only {num_available_gpus} are available. Using {num_available_gpus} GPUs.")
+        args.num_gpus = num_available_gpus
+
     if os.path.exists(args.model_name_or_path):
         cache_path = args.model_name_or_path
     else:
@@ -65,6 +82,7 @@ def main():
 
     # Split data into chunks
     chunks = [data[i:i + chunk_size] for i in range(0, len(data), chunk_size)]
+    logger.info(f"Split data into {len(chunks)} chunks, each with approximately {chunk_size} items")
 
     # Create a pool of workers
     with mp.Pool(processes=args.num_gpus) as pool:
