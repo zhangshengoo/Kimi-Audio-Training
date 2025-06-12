@@ -1,7 +1,7 @@
 import argparse
 import os
 import json
-import multiprocessing as mp
+import torch.multiprocessing as mp
 from functools import partial
 from typing import List, Dict, Any
 import torch
@@ -10,9 +10,6 @@ import logging
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-# Set multiprocessing start method to 'spawn'
-mp.set_start_method('spawn', force=True)
 
 from transformers import AutoModelForCausalLM, AutoTokenizer, AutoConfig
 from huggingface_hub import snapshot_download
@@ -24,19 +21,32 @@ def process_chunk(chunk: List[Dict], gpu_id: int, cache_path: str) -> List[Dict]
     """Process a chunk of data on a specific GPU."""
     # Set GPU device for this process
     os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
+    
+    # Initialize CUDA and set device
+    if not torch.cuda.is_available():
+        raise RuntimeError(f"CUDA is not available for GPU {gpu_id}")
+    
+    # Force CUDA initialization
+    torch.cuda.init()
     torch.cuda.set_device(gpu_id)
     
     # Log GPU usage
     logger.info(f"Process {mp.current_process().name} using GPU {gpu_id}")
     logger.info(f"Available GPU: {torch.cuda.get_device_name(gpu_id)}")
+    logger.info(f"Current CUDA device: {torch.cuda.current_device()}")
     
     # Load model config and prompt manager
     model_config = AutoConfig.from_pretrained(cache_path, trust_remote_code=True)
+    
+    # Create prompt manager - it will use the current CUDA device
     prompt_manager = KimiAPromptManager(
         model_path=cache_path,
         kimia_token_offset=model_config.kimia_token_offset,
         kimia_text_audiodelaytokens=model_config.kimia_mimo_audiodelaytokens
     )
+    
+    # Verify the device being used
+    logger.info(f"Prompt manager using device: {torch.cuda.current_device()}")
     
     processed_data = []
     for data in chunk:
@@ -84,22 +94,22 @@ def main():
     chunks = [data[i:i + chunk_size] for i in range(0, len(data), chunk_size)]
     logger.info(f"Split data into {len(chunks)} chunks, each with approximately {chunk_size} items")
 
-    # Create a pool of workers
-    with mp.Pool(processes=args.num_gpus) as pool:
-        # Create partial function with fixed arguments
-        process_func = partial(process_chunk, cache_path=cache_path)
-        
-        # Map GPU IDs to chunks
-        gpu_ids = list(range(args.num_gpus))
-        
-        # Process chunks in parallel
-        results = []
-        for result in tqdm.tqdm(
-            pool.starmap(process_func, zip(chunks, gpu_ids)),
-            total=len(chunks),
-            desc="Processing chunks"
-        ):
-            results.extend(result)
+    # Create processes for each GPU
+    processes = []
+    results = []
+    
+    for gpu_id in range(args.num_gpus):
+        p = mp.Process(
+            target=lambda gpu_id=gpu_id: results.extend(
+                process_chunk(chunks[gpu_id], gpu_id, cache_path)
+            )
+        )
+        processes.append(p)
+        p.start()
+    
+    # Wait for all processes to complete
+    for p in processes:
+        p.join()
 
     # Write results to output JSONL file
     with open(args.output_file, "w") as f_out:
@@ -107,4 +117,6 @@ def main():
             f_out.write(json.dumps(item, ensure_ascii=False) + "\n")
 
 if __name__ == "__main__":
+    # Set multiprocessing start method to 'spawn' to ensure proper GPU handling
+    mp.set_start_method('spawn', force=True)
     main()
