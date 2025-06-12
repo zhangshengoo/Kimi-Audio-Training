@@ -5,13 +5,16 @@ import multiprocessing as mp
 from functools import partial
 from typing import List, Dict, Any
 
+# Set multiprocessing start method to 'spawn'
+mp.set_start_method('spawn', force=True)
+
 from transformers import AutoModelForCausalLM, AutoTokenizer, AutoConfig
 from huggingface_hub import snapshot_download
 import tqdm
 
 from kimia_infer.api.prompt_manager import KimiAPromptManager
 
-def process_chunk(chunk: List[str], gpu_id: int, cache_path: str) -> List[str]:
+def process_chunk(chunk: List[Dict], gpu_id: int, cache_path: str) -> List[Dict]:
     """Process a chunk of data on a specific GPU."""
     # Set GPU device for this process
     os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
@@ -24,17 +27,16 @@ def process_chunk(chunk: List[str], gpu_id: int, cache_path: str) -> List[str]:
         kimia_text_audiodelaytokens=model_config.kimia_mimo_audiodelaytokens
     )
     
-    processed_lines = []
-    for line in chunk:
-        data = json.loads(line)
+    processed_data = []
+    for data in chunk:
         for msg in data["conversation"]:
             if msg["message_type"] == "audio":
                 audio_path = msg["content"]
                 audio_tokens = prompt_manager._tokenize_audio(audio_path)
                 msg["audio_tokens"] = audio_tokens
-        processed_lines.append(json.dumps(data, ensure_ascii=False))
+        processed_data.append(data)
     
-    return processed_lines
+    return processed_data
 
 def main():
     parser = argparse.ArgumentParser()
@@ -49,17 +51,20 @@ def main():
     else:
         cache_path = snapshot_download(args.model_name_or_path)
 
-    # Read all lines from input file
+    # Read input JSONL file
+    data = []
     with open(args.input_file, "r") as f:
-        lines = f.readlines()
+        for line in f:
+            if line.strip():  # Skip empty lines
+                data.append(json.loads(line))
 
     # Calculate chunk size for each GPU
-    chunk_size = len(lines) // args.num_gpus
-    if len(lines) % args.num_gpus != 0:
+    chunk_size = len(data) // args.num_gpus
+    if len(data) % args.num_gpus != 0:
         chunk_size += 1
 
     # Split data into chunks
-    chunks = [lines[i:i + chunk_size] for i in range(0, len(lines), chunk_size)]
+    chunks = [data[i:i + chunk_size] for i in range(0, len(data), chunk_size)]
 
     # Create a pool of workers
     with mp.Pool(processes=args.num_gpus) as pool:
@@ -78,10 +83,10 @@ def main():
         ):
             results.extend(result)
 
-    # Write results to output file
+    # Write results to output JSONL file
     with open(args.output_file, "w") as f_out:
-        for line in results:
-            f_out.write(line + "\n")
+        for item in results:
+            f_out.write(json.dumps(item, ensure_ascii=False) + "\n")
 
 if __name__ == "__main__":
     main()
