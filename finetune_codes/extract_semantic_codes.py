@@ -59,6 +59,11 @@ def process_chunk(chunk: List[Dict], gpu_id: int, cache_path: str) -> List[Dict]
     
     return processed_data
 
+def process_chunk_wrapper(args):
+    """Wrapper function for process_chunk to handle multiprocessing."""
+    chunk, gpu_id, cache_path = args
+    return process_chunk(chunk, gpu_id, cache_path)
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model_name_or_path", type=str, default="moonshotai/Kimi-Audio-7B")
@@ -94,26 +99,21 @@ def main():
     chunks = [data[i:i + chunk_size] for i in range(0, len(data), chunk_size)]
     logger.info(f"Split data into {len(chunks)} chunks, each with approximately {chunk_size} items")
 
-    # Create processes for each GPU
-    processes = []
-    results = []
+    # Prepare arguments for multiprocessing
+    process_args = [(chunks[i], i, cache_path) for i in range(args.num_gpus)]
     
-    for gpu_id in range(args.num_gpus):
-        p = mp.Process(
-            target=lambda gpu_id=gpu_id: results.extend(
-                process_chunk(chunks[gpu_id], gpu_id, cache_path)
-            )
-        )
-        processes.append(p)
-        p.start()
-    
-    # Wait for all processes to complete
-    for p in processes:
-        p.join()
+    # Create a pool of processes
+    with mp.Pool(processes=args.num_gpus) as pool:
+        results = pool.map(process_chunk_wrapper, process_args)
+
+    # Flatten results
+    flattened_results = []
+    for result in results:
+        flattened_results.extend(result)
 
     # Write results to output JSONL file
     with open(args.output_file, "w") as f_out:
-        for item in results:
+        for item in flattened_results:
             f_out.write(json.dumps(item, ensure_ascii=False) + "\n")
 
 if __name__ == "__main__":
