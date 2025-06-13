@@ -3,14 +3,14 @@ import argparse
 from typing import Optional, List
 import shutil
 import torch
-from transformers import AutoModelForCausalLM
+from transformers import AutoModelForCausalLM, GenerationMixin
 from huggingface_hub import snapshot_download
 
 from kimia_infer.models.tokenizer.whisper_Lv3.whisper import WhisperEncoder
 from .modeling_kimia import MoonshotKimiaForCausalLM
 
 
-class KimiAudioModel(MoonshotKimiaForCausalLM):
+class KimiAudioModel(MoonshotKimiaForCausalLM, GenerationMixin):
     def __init__(self, config):
         super().__init__(config)
         self.whisper_model = WhisperEncoder("openai/whisper-large-v3", mel_batch_size=20, unfreeze_online_whisper_model=True)
@@ -46,9 +46,14 @@ class KimiAudioModel(MoonshotKimiaForCausalLM):
         return kimia_model
     
     @staticmethod
-    def export_model(input_dir, output_dir):
+    def export_model(input_dir, output_dir, enable_lora=False):
         print("Loading model from {}".format(input_dir))
         kimiaudio = KimiAudioModel.from_pretrained(input_dir)
+
+        if enable_lora:
+            from peft import PeftModel
+            kimiaudio = PeftModel.from_pretrained(kimiaudio, input_dir)
+            kimiaudio = kimiaudio.merge_and_unload()
 
         print("Saving Kimi-Audio LM to {}".format(output_dir))
         audio_model = MoonshotKimiaForCausalLM(kimiaudio.config)
@@ -125,6 +130,7 @@ if __name__ == "__main__":
     parser.add_argument("--action", type=str, choices=["init_from_pretrained", "export_model"], default="init_from_pretrained")
     parser.add_argument("--output_dir", type=str, default="output/pretrained_hf")
     parser.add_argument("--input_dir", type=str, default="output/finetuned_hf")
+    parser.add_argument("--enable_lora", type=bool, action="store_true")
     args = parser.parse_args()
 
     if args.action == "init_from_pretrained":
@@ -135,6 +141,6 @@ if __name__ == "__main__":
         # save model
         model.save_pretrained(args.output_dir)
     elif args.action == "export_model":
-        KimiAudioModel.export_model(args.input_dir, args.output_dir)
+        KimiAudioModel.export_model(args.input_dir, args.output_dir, args.enable_lora)
     else:
         raise ValueError(f"Invalid action: {args.action}")
