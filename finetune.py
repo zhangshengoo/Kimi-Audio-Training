@@ -49,11 +49,15 @@ class LoraArguments:
     lora_alpha: int = 16
     lora_dropout: float = 0.05
     lora_target_modules: List[str] = field(
-        default_factory=lambda: ["c_attn", "c_proj", "w1", "w2"]
+        default_factory=lambda: ["q_proj", "k_proj", "v_proj", "o_proj"]
     )
     lora_weight_path: str = ""
     lora_bias: str = "none"
     q_lora: bool = False
+    # 新增：是否在训练结束后合并LoRA权重
+    merge_lora_after_training: bool = field(
+        default=False, metadata={"help": "Merge LoRA weights with base model after training"}
+    )
 
 @dataclass
 class TrainingArguments(transformers.TrainingArguments):
@@ -164,26 +168,26 @@ def compute_loss(outputs, labels, num_items_in_batch=None):
     return loss
 
 def merge_and_save(peft_model, output_dir: str, tokenizer=None):
-        """Merge LoRA weights and save the model"""
-        logger.info(f"Merging LoRA weights and saving to {output_dir}")
-        assert isinstance(peft_model, PeftModel), "model must be a PeftModel when merging"
+    """Merge LoRA weights and save the model"""
+    logger.info(f"Merging LoRA weights and saving to {output_dir}")
+    assert isinstance(peft_model, PeftModel), "model must be a PeftModel when merging"
 
-        # Merge LoRA weights
-        merged_model = peft_model.merge_and_unload()
-        
-        # Save the merged model
-        merged_model.save_pretrained(output_dir)
-        
-        # Save tokenizer if available
-        if tokenizer is not None:
-            tokenizer.save_pretrained(output_dir)
-        
-        logger.info("Model merged and saved successfully")
+    # Merge LoRA weights
+    merged_model = peft_model.merge_and_unload()
     
+    # Save the merged model
+    merged_model.save_pretrained(output_dir)
+    
+    # Save tokenizer if available
+    if tokenizer is not None:
+        tokenizer.save_pretrained(output_dir)
+    
+    logger.info("Model merged and saved successfully")
+
 def save_lora_only(peft_model, lora_args, output_dir: str):
     """Save only LoRA weights"""
     logger.info(f"Saving LoRA weights to {output_dir}")
-    assert isinstance(peft_model, PeftModel), "model must be a PeftModel when merging"
+    assert isinstance(peft_model, PeftModel), "model must be a PeftModel when saving"
     peft_model.save_pretrained(output_dir)
     
     # Save LoRA config
@@ -198,7 +202,7 @@ def print_lora_info(lora_args, peft_model):
     logger.info(f"  Rank: {lora_args.lora_r}")
     logger.info(f"  Alpha: {lora_args.lora_alpha}")
     logger.info(f"  Dropout: {lora_args.lora_dropout}")
-    #logger.info(f"  Target modules: {peft_config.target_modules}")
+    logger.info(f"  Target modules: {lora_args.lora_target_modules}")
     
     # Print trainable parameters
     peft_model.print_trainable_parameters()
@@ -227,49 +231,64 @@ def get_optimized_lora_config(
     Get optimized LoRA configuration for KimiAudio
     
     Args:
-        r: LoRA rank
+        lora_args: LoRA arguments containing r, alpha, dropout, etc.
         target_audio_modules: Whether to apply LoRA to audio-related modules
         target_text_modules: Whether to apply LoRA to text-related modules
         target_mimo_modules: Whether to apply LoRA to MIMO layers
     """
     target_modules = []
     
-    # Base transformer layer attention modules
-    if target_text_modules:
-        # Main transformer layers (text processing)
-        for i in range(28): 
-            target_modules.extend([
-                f"model.layers.{i}.self_attn.q_proj",
-                f"model.layers.{i}.self_attn.k_proj",
-                f"model.layers.{i}.self_attn.v_proj",
-                f"model.layers.{i}.self_attn.o_proj",
-                f"model.layers.{i}.mlp.gate_proj",
-                f"model.layers.{i}.mlp.up_proj",
-                f"model.layers.{i}.mlp.down_proj",
-            ])
+    # 如果用户指定了target_modules，优先使用用户的配置
+    if lora_args.lora_target_modules:
+        # 扩展用户指定的模块到所有层
+        for module_suffix in lora_args.lora_target_modules:
+            # Base transformer layer modules
+            if target_text_modules:
+                for i in range(28):  # Based on model config
+                    target_modules.append(f"model.layers.{i}.self_attn.{module_suffix}")
+                    if module_suffix in ["gate_proj", "up_proj", "down_proj"]:
+                        target_modules.append(f"model.layers.{i}.mlp.{module_suffix}")
+            
+            # MIMO layers
+            if target_mimo_modules:
+                for i in range(8):  # Based on config.kimia_mimo_layers
+                    target_modules.append(f"model.mimo_layers.{i}.self_attn.{module_suffix}")
+                    if module_suffix in ["gate_proj", "up_proj", "down_proj"]:
+                        target_modules.append(f"model.mimo_layers.{i}.mlp.{module_suffix}")
+    else:
+        # 使用默认的全面配置
+        if target_text_modules:
+            for i in range(28):
+                target_modules.extend([
+                    f"model.layers.{i}.self_attn.q_proj",
+                    f"model.layers.{i}.self_attn.k_proj",
+                    f"model.layers.{i}.self_attn.v_proj",
+                    f"model.layers.{i}.self_attn.o_proj",
+                    f"model.layers.{i}.mlp.gate_proj",
+                    f"model.layers.{i}.mlp.up_proj",
+                    f"model.layers.{i}.mlp.down_proj",
+                ])
+        
+        if target_mimo_modules:
+            for i in range(8):
+                target_modules.extend([
+                    f"model.mimo_layers.{i}.self_attn.q_proj",
+                    f"model.mimo_layers.{i}.self_attn.k_proj",
+                    f"model.mimo_layers.{i}.self_attn.v_proj",
+                    f"model.mimo_layers.{i}.self_attn.o_proj",
+                    f"model.mimo_layers.{i}.mlp.gate_proj",
+                    f"model.mimo_layers.{i}.mlp.up_proj",
+                    f"model.mimo_layers.{i}.mlp.down_proj",
+                ])
     
-    # MIMO layers (audio processing)
-    if target_mimo_modules:
-        for i in range(8):  # Based on config.kimia_mimo_layers
-            target_modules.extend([
-                f"model.mimo_layers.{i}.self_attn.q_proj",
-                f"model.mimo_layers.{i}.self_attn.k_proj",
-                f"model.mimo_layers.{i}.self_attn.v_proj",
-                f"model.mimo_layers.{i}.self_attn.o_proj",
-                f"model.mimo_layers.{i}.mlp.gate_proj",
-                f"model.mimo_layers.{i}.mlp.up_proj",
-                f"model.mimo_layers.{i}.mlp.down_proj",
-            ])
-    
-    # Audio adapter
+    # Audio adapter (always include if target_audio_modules is True)
     if target_audio_modules:
-        # VQ adapter linear layers
         target_modules.extend([
             "model.vq_adaptor.layers.0",  # First linear layer
             "model.vq_adaptor.layers.3",  # Second linear layer
         ])
     
-    # Output heads
+    # Output heads (always include)
     target_modules.extend([
         "lm_head",
         "mimo_output",
@@ -305,11 +324,10 @@ def train():
 
     local_rank = training_args.local_rank
 
-
     world_size = int(os.environ.get("WORLD_SIZE", 1))
     ddp = world_size != 1
     if lora_args.q_lora:
-        if len(training_args.fsdp >0 or deepspeed.is_deepspeed_zero3_enabled()):
+        if len(training_args.fsdp) > 0 or deepspeed.is_deepspeed_zero3_enabled():
             logger.warning(
                 "FSDP and ZeRO3 are not supported for QLoRA."
             )
@@ -386,8 +404,11 @@ def train():
 
     # Load data
     data_module = make_supervised_data_module(
-        whisper_model=model.whisper_model, text_tokenizer=text_tokenizer,
-        data_args=data_args, max_len=training_args.model_max_length, kimia_token_offset=model.config.kimia_token_offset
+        whisper_model=model.whisper_model if hasattr(model, 'whisper_model') else model.base_model.whisper_model,
+        text_tokenizer=text_tokenizer,
+        data_args=data_args,
+        max_len=training_args.model_max_length,
+        kimia_token_offset=model.config.kimia_token_offset if hasattr(model, 'config') else model.base_model.config.kimia_token_offset
     )
 
     # Start trainer
@@ -401,11 +422,22 @@ def train():
     trainer.train()
     trainer.save_state()
 
-    safe_save_model_for_hf_trainer(
-        trainer=trainer, 
-        output_dir=training_args.output_dir,
-        bias=lora_args.lora_bias if training_args.use_lora else "none"
-    )
+    # Save model
+    if training_args.use_lora:
+        # Save LoRA weights
+        lora_output_dir = os.path.join(training_args.output_dir, "lora_weights")
+        save_lora_only(model, lora_args, lora_output_dir)
+        
+        # Optionally merge and save the full model
+        if lora_args.merge_lora_after_training:
+            merged_output_dir = os.path.join(training_args.output_dir, "merged_model")
+            merge_and_save(model, merged_output_dir, text_tokenizer)
+    else:
+        safe_save_model_for_hf_trainer(
+            trainer=trainer,
+            output_dir=training_args.output_dir,
+            bias="none"
+        )
 
 if __name__ == "__main__":
     train()
