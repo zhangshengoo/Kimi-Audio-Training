@@ -25,7 +25,7 @@ MASTER_PORT=${MASTER_PORT:-6001}
 
 MODEL="moonshotai/Kimi-Audio-7B-Instruct" # Set the path if you do not want to load from huggingface directly
 
-PRETRAINED_MODEL_PATH=""
+PRETRAINED_MODEL_PATH="output/hf_output"
 
 # ATTENTION: specify the path to your training data, which should be a json file consisting of a list of conversations.
 # See the section for finetuning in README for more information.
@@ -33,7 +33,7 @@ DATA=""
 
 function usage() {
     echo '
-Usage: bash finetune/finetune_ds.sh [-m MODEL_PATH] [-d DATA_PATH]
+Usage: bash finetune/finetune_lora_ds.sh [-m MODEL_PATH] [-d DATA_PATH]
 '
 }
 
@@ -91,12 +91,11 @@ torchrun $DISTRIBUTED_ARGS finetune.py \
     --data_path $DATA \
     --eval_ratio 0.05 \
     --bf16 True \
-    --output_dir output/kimiaudio_ckpts \
-    --num_train_epochs 5 \
+    --output_dir output/kimiaudio_lora_3 \
+    --num_train_epochs 10 \
     --per_device_train_batch_size 1 \
     --per_device_eval_batch_size 1 \
-    --gradient_accumulation_steps 1 \
-    --evaluation_strategy "no" \
+    --gradient_accumulation_steps 16 \
     --save_strategy "steps" \
     --save_steps 1000 \
     --save_total_limit 10 \
@@ -107,7 +106,23 @@ torchrun $DISTRIBUTED_ARGS finetune.py \
     --lr_scheduler_type "cosine" \
     --logging_steps 1 \
     --report_to "none" \
-    --model_max_length 512 \
+    --model_max_length 2048 \
     --gradient_checkpointing True \
     --lazy_preprocess True \
-    --deepspeed finetune_codes/ds_config_zero3.json
+    --deepspeed finetune_codes/ds_config_zero2.json \
+    --use_lora \
+    --lora_r 8 \
+    --lora_alpha 16 \
+    --lora_dropout 0.1 \
+    --lora_target_modules "q_proj" "k_proj" "v_proj" "o_proj" \
+    --lora_bias "none" \
+    --q_lora False \
+    --text_layer_start 18 \
+    --text_layer_end 28 \
+    --mimo_layer_start 0 \
+    --mimo_layer_end 6 \
+    --target_text_modules True \
+    --target_audio_modules True \
+    --target_mimo_modules True \
+    --target_lm_head True \
+    --target_mimo_output True 

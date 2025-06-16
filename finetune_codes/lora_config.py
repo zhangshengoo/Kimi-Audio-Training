@@ -63,7 +63,7 @@ class LoraArguments:
         default=28, metadata={"help": "Number of text transformer layers"}
     )
     num_mimo_layers: int = field(
-        default=8, metadata={"help": "Number of MIMO layers"}
+        default=6, metadata={"help": "Number of MIMO layers"}
     )
     # 新增：配置层数范围的参数
     text_layer_start: int = field(
@@ -145,9 +145,9 @@ def get_optimized_lora_config(lora_args: LoraArguments) -> LoraConfig:
                     f"model.layers.{i}.self_attn.k_proj",
                     f"model.layers.{i}.self_attn.v_proj",
                     f"model.layers.{i}.self_attn.o_proj",
-                    f"model.layers.{i}.mlp.gate_proj",
-                    f"model.layers.{i}.mlp.up_proj",
-                    f"model.layers.{i}.mlp.down_proj",
+                    #f"model.layers.{i}.mlp.gate_proj",
+                    #f"model.layers.{i}.mlp.up_proj",
+                    #f"model.layers.{i}.mlp.down_proj",
                 ])
         
         if lora_args.target_mimo_modules:
@@ -157,9 +157,9 @@ def get_optimized_lora_config(lora_args: LoraArguments) -> LoraConfig:
                     f"model.mimo_layers.{i}.self_attn.k_proj",
                     f"model.mimo_layers.{i}.self_attn.v_proj",
                     f"model.mimo_layers.{i}.self_attn.o_proj",
-                    f"model.mimo_layers.{i}.mlp.gate_proj",
-                    f"model.mimo_layers.{i}.mlp.up_proj",
-                    f"model.mimo_layers.{i}.mlp.down_proj",
+                    #f"model.mimo_layers.{i}.mlp.gate_proj",
+                    #f"model.mimo_layers.{i}.mlp.up_proj",
+                    #f"model.mimo_layers.{i}.mlp.down_proj",
                 ])
     
     # Audio adapter (always include if target_audio_modules is True)
