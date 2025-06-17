@@ -4,6 +4,7 @@ from peft import LoraConfig, TaskType, PeftModel
 import logging
 import os
 import json
+import torch
 from deepspeed import zero
 from deepspeed.runtime.zero.partition_parameters import ZeroParamStatus
 
@@ -54,9 +55,19 @@ class LoraArguments:
     lora_weight_path: str = ""
     lora_bias: str = "none"
     q_lora: bool = False
+    save_strategy: str = field(
+        default="both",
+        metadata={
+            "help": "LoRA model save strategy: 'default' (save PEFT model), "
+                   "'lora_only' (save only LoRA weights), "
+                   "'merged' (save merged model), "
+                   "'both' (save both LoRA weights and merged model)"
+        }
+    )
     # 新增：是否在训练结束后合并LoRA权重
     merge_lora_after_training: bool = field(
-        default=False, metadata={"help": "Merge LoRA weights with base model after training"}
+        default=False,
+        metadata={"help": "Whether to merge LoRA weights after training (deprecated, use save_strategy instead)"}
     )
     # 新增：配置目标模块的参数
     num_text_layers: int = field(
@@ -240,3 +251,46 @@ def print_lora_info(lora_config, peft_model):
     logger.info(f"Trainable parameters: {trainable_params:,}")
     logger.info(f"Trainable ratio: {trainable_params/total_params:.2%}")
     logger.info("="*50)
+
+def save_lora_weights(model, state_dict, output_dir, lora_args=None):
+    """
+    保存LoRA权重和配置
+    
+    Args:
+        model: PEFT模型
+        state_dict: LoRA权重字典
+        output_dir: 输出目录
+        lora_args: LoRA配置参数
+    """
+    # 保存LoRA权重
+    torch.save(state_dict, os.path.join(output_dir, "adapter_model.bin"))
+    
+    # 保存PEFT配置
+    if hasattr(model, 'peft_config'):
+        peft_config = model.peft_config
+    elif hasattr(model, 'base_model') and hasattr(model.base_model, 'peft_config'):
+        peft_config = model.base_model.peft_config
+    else:
+        peft_config = None
+    
+    if peft_config:
+        # 保存adapter配置
+        for adapter_name, config in peft_config.items():
+            config.save_pretrained(output_dir)
+            break  # 通常只有一个adapter
+    
+    # 如果提供了lora_args，也保存一份用于参考
+    if lora_args:
+        lora_config_dict = {
+            "r": lora_args.lora_r,
+            "lora_alpha": lora_args.lora_alpha,
+            "lora_dropout": lora_args.lora_dropout,
+            "target_modules": lora_args.lora_target_modules,
+            "modules_to_save": lora_args.modules_to_save,
+            "bias": lora_args.lora_bias,
+            "task_type": "CAUSAL_LM",
+        }
+        with open(os.path.join(output_dir, "lora_config.json"), "w") as f:
+            json.dump(lora_config_dict, f, indent=2)
+    
+    #rank0_print(f"LoRA weights saved to {output_dir}")
