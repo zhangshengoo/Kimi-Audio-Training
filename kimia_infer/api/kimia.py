@@ -204,6 +204,8 @@ class KimiAudio(object):
             .numpy()
             .tolist()
         )
+        # 循环正常结束，说明达到了max_new_tokens
+        print(f"[WARNING] 达到max token限制: {max_new_tokens}")
         return return_audio_tokens, return_text_tokens
 
     @torch.inference_mode()

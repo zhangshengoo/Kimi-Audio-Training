@@ -6,6 +6,13 @@ import multiprocessing as mp
 from queue import Empty
 import time
 
+import re
+max_token_warnings = mp.Value('i', 0)
+
+# 3. 在worker_process中捕获WARNING
+import io
+from contextlib import redirect_stdout
+
 def worker_process(gpu_id, model_path, task_queue, result_queue, sampling_params):
     """工作进程函数，每个GPU运行一个"""
     # 设置当前进程使用的GPU
@@ -47,7 +54,14 @@ def worker_process(gpu_id, model_path, task_queue, result_queue, sampling_params
             
             try:
                 # 生成转录文本
-                wav, text = model.generate(messages, **sampling_params, output_type="text")
+                # 捕获print输出
+                f = io.StringIO()
+                with redirect_stdout(f):
+                    wav, text = model.generate(messages, **sampling_params, output_type="text")
+                output = f.getvalue()
+                if "[WARNING] 达到max token限制" in output:
+                    with max_token_warnings.get_lock():
+                        max_token_warnings.value += 1
                 result = f"{filename} {text}"
                 print(f"[GPU {gpu_id}] 已处理: {filename}")
                 result_queue.put((task_id, result, None))
@@ -175,6 +189,7 @@ def process_audio_files_parallel(model_path, base_path, output_base_path, sampli
     end_time = time.time()
     print(f"\n处理完成！总耗时: {end_time - start_time:.2f} 秒")
     print(f"平均每个文件耗时: {(end_time - start_time) / len(all_tasks):.2f} 秒")
+    print(f"达到max token限制的文件数: {max_token_warnings.value}")
 
 if __name__ == "__main__":
     # 设置multiprocessing使用spawn方法，避免CUDA初始化问题
