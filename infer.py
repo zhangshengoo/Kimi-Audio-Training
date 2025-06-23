@@ -10,7 +10,7 @@ if __name__ == "__main__":
 
     model = KimiAudio(
         model_path=args.model_path,
-        load_detokenizer=True,
+        load_detokenizer=False,
     )
 
     sampling_params = {

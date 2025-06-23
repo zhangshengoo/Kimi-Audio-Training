@@ -28,8 +28,8 @@ python finetune.py \
   --lazy_preprocess True \
   --gradient_checkpointing \
   --use_lora \
-  --lora_r 64 \
+  --lora_r 8 \
   --lora_alpha 16 \
   --lora_dropout 0.05 \
-  --lora_target_modules "c_attn" "c_proj" "w1" "w2" \
+  --lora_target_modules "q_proj" "k_proj" "v_proj" "o_proj" "gate_proj" "up_proj" "down_proj" \
   --lora_bias "none" 

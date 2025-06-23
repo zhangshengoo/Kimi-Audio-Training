@@ -55,8 +55,11 @@ class LoraArguments:
     lora_weight_path: str = ""
     lora_bias: str = "none"
     q_lora: bool = False
-    save_strategy: str = field(
-        default="both",
+    modules_to_save: List[str] = field(
+        default=None
+    )
+    lora_save_strategy: str = field(
+        default="merged",
         metadata={
             "help": "LoRA model save strategy: 'default' (save PEFT model), "
                    "'lora_only' (save only LoRA weights), "
@@ -138,15 +141,15 @@ def get_optimized_lora_config(lora_args: LoraArguments) -> LoraConfig:
             if lora_args.target_text_modules:
                 for i in range(lora_args.text_layer_start, text_layer_end):
                     target_modules.append(f"model.layers.{i}.self_attn.{module_suffix}")
-                    if module_suffix in ["gate_proj", "up_proj", "down_proj"]:
-                        target_modules.append(f"model.layers.{i}.mlp.{module_suffix}")
+                    #if module_suffix in ["gate_proj", "up_proj", "down_proj"]:
+                    #    target_modules.append(f"model.layers.{i}.mlp.{module_suffix}")
             
             # MIMO layers
             if lora_args.target_mimo_modules:
                 for i in range(lora_args.mimo_layer_start, mimo_layer_end):
                     target_modules.append(f"model.mimo_layers.{i}.self_attn.{module_suffix}")
-                    if module_suffix in ["gate_proj", "up_proj", "down_proj"]:
-                        target_modules.append(f"model.mimo_layers.{i}.mlp.{module_suffix}")
+                    #if module_suffix in ["gate_proj", "up_proj", "down_proj"]:
+                    #    target_modules.append(f"model.mimo_layers.{i}.mlp.{module_suffix}")
     else:
         # 使用默认的全面配置
         if lora_args.target_text_modules:
