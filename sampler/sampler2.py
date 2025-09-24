@@ -1,19 +1,19 @@
 """
 简化版：使用transformers的beam search功能进行ASR
-修复了generation_config属性问题
+修复了whisper特征维度问题
 """
 
 import torch
 import torch.nn as nn
 from transformers import GenerationConfig
-from transformers.generation import GenerationMixin
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 import numpy as np
+from loguru import logger
 
 
 class SimpleKimiAudioASR:
     """
-    简化的ASR接口，利用transformers的beam search
+    简化的ASR接口，利用beam search进行文本生成
     """
     
     def __init__(self, kimia_model, prompt_manager):
@@ -44,7 +44,17 @@ class SimpleKimiAudioASR:
         audio_input_ids = audio_input_ids.to(self.device)
         text_input_ids = text_input_ids.to(self.device)
         is_continuous_mask = is_continuous_mask.to(self.device)
-        audio_features = [f.to(self.device) for f in audio_features]
+        
+        # 处理audio_features - 确保正确的维度
+        if audio_features:
+            processed_features = []
+            for f in audio_features:
+                f = f.to(self.device)
+                # 如果特征有batch维度，去除它
+                if f.dim() == 3 and f.shape[0] == 1:
+                    f = f.squeeze(0)  # [1, seq_len, feature_dim] -> [seq_len, feature_dim]
+                processed_features.append(f)
+            audio_features = processed_features
         
         # 执行beam search
         with torch.no_grad():
@@ -64,6 +74,32 @@ class SimpleKimiAudioASR:
         # 解码文本
         return self._decode_tokens(generated_tokens)
     
+    def _prepare_whisper_features_for_batch(self, audio_features: List[torch.Tensor], beam_size: int) -> List[torch.Tensor]:
+        """
+        为beam search准备whisper特征，确保正确的批次处理
+        """
+        if not audio_features:
+            return audio_features
+        
+        expanded_features = []
+        for feat in audio_features:
+            # feat可能是 [seq_len, feature_dim] 或 [1, seq_len, feature_dim]
+            if feat.dim() == 2:
+                # [seq_len, feature_dim] -> [beam_size, seq_len, feature_dim]
+                expanded_feat = feat.unsqueeze(0).expand(beam_size, -1, -1)
+            elif feat.dim() == 3:
+                if feat.shape[0] == 1:
+                    # [1, seq_len, feature_dim] -> [beam_size, seq_len, feature_dim]
+                    expanded_feat = feat.expand(beam_size, -1, -1)
+                else:
+                    expanded_feat = feat
+            else:
+                raise ValueError(f"Unexpected whisper feature dimension: {feat.shape}")
+            
+            expanded_features.append(expanded_feat)
+        
+        return expanded_features
+    
     def _beam_search(
         self,
         audio_input_ids: torch.Tensor,
@@ -81,7 +117,11 @@ class SimpleKimiAudioASR:
         核心beam search实现
         """
         device = audio_input_ids.device
-        batch_size = 1  # 简化版只支持batch_size=1
+        batch_size = audio_input_ids.shape[0]
+        
+        # 确保batch_size为1
+        if batch_size != 1:
+            raise ValueError(f"SimpleKimiAudioASR only supports batch_size=1, got {batch_size}")
         
         # 初始化beam scores
         beam_scores = torch.zeros(beam_size, device=device)
@@ -94,7 +134,9 @@ class SimpleKimiAudioASR:
         audio_input_ids = audio_input_ids.repeat(beam_size, 1)
         text_input_ids = text_input_ids.repeat(beam_size, 1) 
         is_continuous_mask = is_continuous_mask.repeat(beam_size, 1)
-        audio_features = [f.repeat(beam_size, 1, 1) for f in audio_features]
+        
+        # 正确处理audio_features的扩展
+        audio_features = self._prepare_whisper_features_for_batch(audio_features, beam_size)
         
         # 位置编码
         position_ids = torch.arange(
@@ -112,23 +154,45 @@ class SimpleKimiAudioASR:
         )
         
         for step in range(max_new_tokens):
-            # 前向传播
-            audio_logits, text_logits, past_key_values = self.kimia_model.alm(
-                input_ids=audio_input_ids if step == 0 else audio_blank,
-                text_input_ids=text_input_ids,
-                whisper_input_feature=audio_features if step == 0 else None,
-                is_continuous_mask=is_continuous_mask if step == 0 else None,
-                position_ids=position_ids,
-                past_key_values=past_key_values,
-                return_dict=False,
-            )
+            try:
+                # 前向传播
+                # 第一步传入完整的输入和特征，后续步骤只传入新token
+                if step == 0:
+                    # 对于第一步，使用完整的输入
+                    audio_logits, text_logits, past_key_values = self.kimia_model.alm(
+                        input_ids=audio_input_ids,
+                        text_input_ids=text_input_ids,
+                        whisper_input_feature=audio_features,
+                        is_continuous_mask=is_continuous_mask,
+                        position_ids=position_ids,
+                        past_key_values=past_key_values,
+                        return_dict=False,
+                    )
+                else:
+                    # 后续步骤，只传入最新的token
+                    audio_logits, text_logits, past_key_values = self.kimia_model.alm(
+                        input_ids=audio_blank,
+                        text_input_ids=text_input_ids,
+                        whisper_input_feature=None,
+                        is_continuous_mask=None,
+                        position_ids=position_ids,
+                        past_key_values=past_key_values,
+                        return_dict=False,
+                    )
+            except Exception as e:
+                logger.error(f"Error in forward pass at step {step}: {e}")
+                logger.error(f"audio_input_ids shape: {audio_input_ids.shape if step == 0 else audio_blank.shape}")
+                logger.error(f"text_input_ids shape: {text_input_ids.shape}")
+                if audio_features and step == 0:
+                    logger.error(f"audio_features[0] shape: {audio_features[0].shape}")
+                raise e
             
             # 获取最后一个位置的logits
             if len(text_logits.shape) == 3:
                 text_logits = text_logits[:, -1, :]
             
             # 应用温度
-            if temperature != 1.0:
+            if temperature != 1.0 and temperature > 0:
                 text_logits = text_logits / temperature
             
             # 应用重复惩罚
@@ -136,7 +200,10 @@ class SimpleKimiAudioASR:
                 for beam_idx in range(beam_size):
                     for token in set(beam_tokens[beam_idx]):
                         if token < text_logits.shape[-1]:
-                            text_logits[beam_idx, token] /= repetition_penalty
+                            if text_logits[beam_idx, token] < 0:
+                                text_logits[beam_idx, token] *= repetition_penalty
+                            else:
+                                text_logits[beam_idx, token] /= repetition_penalty
             
             # 应用n-gram重复限制
             if no_repeat_ngram_size > 0 and step >= no_repeat_ngram_size:
@@ -149,7 +216,8 @@ class SimpleKimiAudioASR:
                         for i in range(len(tokens) - no_repeat_ngram_size + 1):
                             if tuple(tokens[i:i+no_repeat_ngram_size-1]) == ngram_prefix:
                                 banned_token = tokens[i+no_repeat_ngram_size-1]
-                                text_logits[beam_idx, banned_token] = -float('inf')
+                                if banned_token < text_logits.shape[-1]:
+                                    text_logits[beam_idx, banned_token] = -float('inf')
             
             # 计算log probabilities
             log_probs = torch.nn.functional.log_softmax(text_logits, dim=-1)
@@ -301,12 +369,17 @@ def test_simple_wrapper():
         print(f"\n{name}:")
         print("-" * 40)
         
-        start_time = time.time()
-        text = asr.generate_with_beam_search(messages, **config)
-        elapsed = time.time() - start_time
-        
-        print(f"Output: {text}")
-        print(f"Time: {elapsed:.2f}s")
+        try:
+            start_time = time.time()
+            text = asr.generate_with_beam_search(messages, **config)
+            elapsed = time.time() - start_time
+            
+            print(f"Output: {text}")
+            print(f"Time: {elapsed:.2f}s")
+        except Exception as e:
+            print(f"Error: {e}")
+            import traceback
+            traceback.print_exc()
     
     print("\n" + "="*60)
 
